@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Timer2 OBS</title>
+  <style>
+    body {
+      margin: 0;
+      background: transparent;
+      font-family: Arial, sans-serif;
+      color: white;
+      text-align: center;
+    }
+    #controlPanel {
+      background: #1e1e1e;
+      padding: 20px;
+      height: 100vh;
+    }
+    #progressContainer {
+      width: 100%;
+      height: 30px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 15px;
+      overflow: hidden;
+      margin-top: 40px;
+    }
+    #progressBar {
+      width: 0%;
+      height: 100%;
+      background-color: limegreen;
+      transition: width 0.5s linear;
+    }
+    input, button {
+      margin: 10px;
+      padding: 10px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="controlPanel" style="display: none">
+    <h2>Contrôle du Timer</h2>
+    <label>Durée (minutes) :</label>
+    <input type="number" id="minutesInput" min="0" max="120" value="5" />
+    <br />
+    <button id="startBtn">Démarrer</button>
+    <button id="resetBtn">Réinitialiser</button>
+    <h3 id="timeDisplay">00:00</h3>
+  </div>
+
+  <div id="progressContainer" style="display: none">
+    <div id="progressBar"></div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode') || 'display';
+
+    const controlPanel = document.getElementById('controlPanel');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const timeDisplay = document.getElementById('timeDisplay');
+
+    let duration = 0;
+    let remaining = 0;
+    let timerInterval;
+
+    if (mode === 'control') {
+      controlPanel.style.display = 'block';
+    } else {
+      progressContainer.style.display = 'block';
+    }
+
+    function updateDisplay() {
+      const minutes = Math.floor(remaining / 60);
+      const seconds = remaining % 60;
+      timeDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    function updateProgress() {
+      const data = JSON.parse(localStorage.getItem('obsTimerData') || '{}');
+      if (data.startTime && data.duration) {
+        const elapsed = (Date.now() - data.startTime) / 1000;
+        const percent = Math.min((elapsed / data.duration) * 100, 100);
+        progressBar.style.width = `${percent}%`;
+      }
+      requestAnimationFrame(updateProgress);
+    }
+
+    if (mode === 'display') {
+      updateProgress();
+    }
+
+    // Contrôle du timer
+    if (mode === 'control') {
+      document.getElementById('startBtn').addEventListener('click', () => {
+        const mins = parseInt(document.getElementById('minutesInput').value, 10) || 0;
+        duration = mins * 60;
+        remaining = duration;
+        clearInterval(timerInterval);
+        localStorage.setItem('obsTimerData', JSON.stringify({ startTime: Date.now(), duration }));
+        timerInterval = setInterval(() => {
+          remaining--;
+          updateDisplay();
+          if (remaining <= 0) {
+            clearInterval(timerInterval);
+          }
+        }, 1000);
+        updateDisplay();
+      });
+
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        clearInterval(timerInterval);
+        localStorage.removeItem('obsTimerData');
+        remaining = 0;
+        progressBar.style.width = '0%';
+        timeDisplay.textContent = '00:00';
+      });
+    }
+  </script>
+</body>
+</html>
